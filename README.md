@@ -1,292 +1,179 @@
-# Enterprise Financial Data Reconciliation & Exception Management Engine
+# Financial Data Reconciliation and Exception Management
+
+## About the Project
+
+This project is about comparing financial transaction records from three different sources:
+
+- Company transactions
+- Bank transactions
+- Payment gateway transactions
+
+In real-world businesses, transaction details may not always match between these systems. Some records may be missing, duplicated, or have different transaction amounts.
+
+I built this project using MySQL and Power BI to identify these differences, manage exceptions, and display the reconciliation results in a dashboard.
+
+## Technologies Used
 
-<div align="center">
+- MySQL
+- SQL
+- Power BI
+- DAX
+- MySQL Workbench
+
+## Project Features
+
+- Created database tables for company, bank, and gateway transactions.
+- Loaded sample transaction data into the database.
+- Used staging tables to validate incoming records.
+- Identified invalid records and duplicate transactions.
+- Compared transactions between the three sources.
+- Identified matched transactions, missing records, amount mismatches, and unmatched transactions.
+- Created stored procedures to generate reconciliation reports.
+- Used indexes to improve query performance and checked query execution using EXPLAIN.
+- Created a trigger to maintain audit records when company transaction data is updated.
+- Managed exceptions based on priority.
+- Connected the MySQL database to Power BI.
+- Created dashboards to view reconciliation results, source records, workflow status, and audit activity.
 
-![MySQL](https://img.shields.io/badge/MySQL-8.0-blue?logo=mysql&logoColor=white)
-![SQL](https://img.shields.io/badge/Language-SQL-orange)
-![Status](https://img.shields.io/badge/Status-Portfolio%20Ready-brightgreen)
-![License](https://img.shields.io/badge/License-MIT-lightgrey)
+## How the Project Works
 
-**A production-grade MySQL 8.0 database project demonstrating advanced data engineering patterns for financial reconciliation.**
+The project follows this process:
 
-</div>
+1. Transaction data is stored from company, bank, and payment gateway sources.
+2. Data is checked and validated using staging tables.
+3. Valid records are loaded into the main transaction tables.
+4. Transactions are compared using their reference numbers and transaction details.
+5. Differences are identified and classified.
+6. Exceptions are added to the workflow table with priority levels.
+7. Audit records are maintained for important activities.
+8. Power BI is used to visualize the final results.
+
+## Database Details
+
+Database name: `financial_reconciliation`
+
+Main tables include:
+
+- `company_transactions`
+- `bank_transactions`
+- `gateway_transactions`
+- `stg_company_transactions`
+- `stg_bank_transactions`
+- `stg_gateway_transactions`
+- `reconciliation_results`
+- `exception_workflow`
+- `audit_log`
+- `recon_run_log`
+- `daily_recon_summary`
+
+Reference tables are also used to maintain transaction-related values.
+
+## SQL Concepts Used
 
----
+- Primary Key and Foreign Key
+- Joins and Subqueries
+- Aggregate Functions
+- Common Table Expressions
+- CASE Statements
+- Stored Procedures
+- Views
+- Indexes
+- Triggers
+- Transactions
+- COMMIT and ROLLBACK
+- Data Validation
+- Duplicate Detection
+- EXPLAIN
 
-## 📋 Business Problem
+## Project Results
 
-A B2B SaaS company processes thousands of payments daily through **three independent systems**: its own ERP, its banking partner, and a third-party payment gateway. Due to timing differences, bank fees, system outages, and double-submissions, these systems regularly disagree.
+The sample dataset produced the following results after loading and reconciliation.
 
-The finance team was spending **~40 hours/month** manually reconciling in Excel, with high-value mismatches going undetected until month-end close.
+| Description | Count |
+|---|---:|
+| Company Records | 202 |
+| Bank Records | 210 |
+| Gateway Records | 135 |
+| Total Source Records | 547 |
+| Matched Transactions | 126 |
+| Total Exceptions | 103 |
+| Exception Workflows | 103 |
+| Audit Log Records | 9 |
 
-**This project automates the entire reconciliation workflow:**
-- Ingests raw data from all three sources
-- Cleans, validates, and deduplicates records
-- Classifies every transaction (Matched / Missing / Mismatch / Duplicate)
-- Routes exceptions to the right team for resolution
-- Generates nightly summary reports and audit trails
-
----
-
-## 🏗️ Project Structure
+The reconciliation results include amount mismatches, duplicate records, missing bank transactions, missing gateway transactions, and unmatched records.
 
-```
-fin-reconciliation-engine/
-│
-├── database/
-│   ├── schema.sql          ← All tables, FKs, generated columns, indexes (run 1st)
-│   ├── sample_data.sql     ← 500+ realistic transaction records (run 2nd)
-│   ├── transformations.sql ← Staging ETL, validation, deduplication (run 3rd)
-│   ├── procedures.sql      ← 6 stored procedures + reconciliation run (run 4th)
-│   ├── views.sql           ← 8 analytical views for reporting (run 5th)
-│   ├── indexes.sql         ← Composite/FULLTEXT indexes + EXPLAIN plans (run 6th)
-│   └── tests.sql           ← 25+ test cases with PASS/FAIL assertions (run 7th)
-│
-├── documentation/
-│   └── architecture.md     ← ERD, flow diagrams, algorithm documentation
-│
-└── README.md               ← This file
-```
+The match rate among the 229 reconciliation results was 55.02%.
 
----
+## Power BI Dashboard
 
-## 🚀 Setup Instructions (MySQL Workbench)
-
-### Prerequisites
-- MySQL Server **8.0+** installed and running
-- MySQL Workbench **8.0+** (or any MySQL 8.0-compatible client)
-- `utf8mb4` character set support (default in MySQL 8.0)
-
-### Step-by-Step Setup
-
-**1. Open MySQL Workbench** and connect to your local MySQL instance.
-
-**2. Run scripts in order** using `File → Open SQL Script` then `⚡ Execute`:
-
-| Order | File | What it does |
-|-------|------|-------------|
-| 1 | `database/schema.sql` | Creates `fin_reconciliation` database + 14 tables |
-| 2 | `database/sample_data.sql` | Seeds 200 company + 200 bank + 160 gateway records |
-| 3 | `database/transformations.sql` | Runs staging ETL with validation and dedup |
-| 4 | `database/procedures.sql` | Creates 6 stored procedures and runs reconciliation |
-| 5 | `database/views.sql` | Creates 8 analytical views |
-| 6 | `database/indexes.sql` | Adds covering indexes and shows EXPLAIN plans |
-| 7 | `database/tests.sql` | Runs 25+ assertions to verify correctness |
-
-> [!IMPORTANT]
-> Run each file completely before moving to the next. Each script depends on the previous ones.
-
-**3. Quick verification** — after all scripts run:
-
-```sql
-USE fin_reconciliation;
-
--- Check reconciliation results
-SELECT result_type, COUNT(*) AS count
-FROM reconciliation_results
-GROUP BY result_type
-ORDER BY count DESC;
-
--- Check daily summary
-SELECT * FROM vw_reconciliation_dashboard;
-
--- View open exceptions
-SELECT * FROM vw_unresolved_exceptions LIMIT 20;
-```
-
----
-
-## 📊 Data Model at a Glance
-
-| Table | Description | Key Columns |
-|-------|-------------|-------------|
-| `company_transactions` | ERP/accounting ledger | `transaction_id`, `reference_no`, `amount` |
-| `bank_transactions` | Bank statement feed | `bank_ref`, `net_amount` (generated), `value_date` |
-| `gateway_transactions` | Payment gateway events | `gateway_txn_ref`, `order_id`, `amount` |
-| `reconciliation_results` | Classification output | `result_type`, `amount_variance` (generated) |
-| `recon_run_log` | Nightly run tracker | `run_id`, `status`, `matched_count` |
-| `daily_recon_summary` | Pre-aggregated KPIs | `reconciliation_rate` (generated) |
-| `exception_workflow` | Human resolution tracker | `priority`, `workflow_status` |
-| `audit_log` | Full audit trail | `log_level`, `operation`, `message` |
-| `stg_*` (3 tables) | Staging/raw data | `validation_errors`, `is_processed` |
-| `ref_*` (4 tables) | Lookup/reference data | Currency, Status, Payment Method |
-
----
-
-## 🔍 Reconciliation Classifications
-
-| Classification | Description | Sample Count |
-|---------------|-------------|-------------|
-| `MATCHED` | All 3 sources agree (within \$0.01) | ~140 |
-| `MISSING_BANK` | In company ledger, absent from bank | ~7 |
-| `MISSING_GATEWAY` | In company ledger, absent from gateway | ~40 |
-| `AMOUNT_MISMATCH` | Matched by reference, amounts differ | ~10 |
-| `UNMATCHED_BANK` | Bank-only credit (no company record) | 5 |
-| `UNMATCHED_GATEWAY` | Gateway-only transaction | 4 |
-| `DUPLICATE_COMPANY` | Double-entry in ERP | 3 |
-| `DUPLICATE_BANK` | Double-entry in bank feed | 3 |
-| `DUPLICATE_GATEWAY` | Double-entry from gateway | 2 |
-
----
-
-## 🛠️ Key SQL Techniques Demonstrated
-
-### Window Functions
-```sql
--- Duplicate detection using ROW_NUMBER()
-ROW_NUMBER() OVER (PARTITION BY reference_no, amount ORDER BY company_txn_id)
-
--- Running variance balance using SUM() OVER
-SUM(daily_variance) OVER (PARTITION BY currency_code ORDER BY txn_date ROWS UNBOUNDED PRECEDING)
-
--- Month-over-month rate change using LAG()
-recon_rate_pct - LAG(recon_rate_pct, 1) OVER (ORDER BY month_key)
-
--- Customer variance ranking using RANK()
-RANK() OVER (ORDER BY SUM(ABS(amount_variance)) DESC)
-```
-
-### CTEs (Common Table Expressions)
-```sql
--- Multi-step reconciliation matching
-WITH company_base AS (...),
-     bank_base    AS (...),
-     gateway_base AS (...),
-     comp_bank    AS (...),
-     full_match   AS (...)
-SELECT ... FROM full_match WHERE ...
-```
-
-### Generated Columns
-```sql
--- Bank net amount (computed, never stored twice)
-net_amount DECIMAL(18,2) GENERATED ALWAYS AS (credit_amount - debit_amount) STORED
-
--- Reconciliation variance
-amount_variance DECIMAL(18,2) GENERATED ALWAYS AS (
-    COALESCE(company_amount, 0) - COALESCE(bank_amount, 0)
-) STORED
-
--- Reconciliation rate
-reconciliation_rate DECIMAL(5,2) GENERATED ALWAYS AS (
-    CASE WHEN total_transactions = 0 THEN 0
-    ELSE ROUND((matched_count / total_transactions) * 100, 2) END
-) STORED
-```
-
-### Transaction Handling & Error Recovery
-```sql
-DECLARE EXIT HANDLER FOR SQLEXCEPTION
-BEGIN
-    GET DIAGNOSTICS CONDITION 1 @msg = MESSAGE_TEXT;
-    UPDATE recon_run_log SET status = 'FAILED', error_message = @msg WHERE run_id = v_run_id;
-    INSERT INTO audit_log ... VALUES ('ERROR', ...);
-    RESIGNAL;
-END;
-```
-
----
-
-## ⚡ Running the Reconciliation Procedure
-
-After setup, you can run reconciliation for any date:
-
-```sql
--- Run for today
-CALL sp_run_full_reconciliation(CURDATE());
-
--- Run for a specific historical date
-CALL sp_run_full_reconciliation('2025-03-31');
-
--- Resolve a specific exception manually
-CALL sp_resolve_exception(
-    42,                              -- recon_id
-    'finance_analyst@company.com',   -- resolved_by
-    'Bank confirmed: processing delay on 2025-03-31. No action needed.'
-);
-```
-
----
-
-## 📈 Key Reports (Views)
-
-```sql
--- 1. Live dashboard KPIs
-SELECT * FROM vw_reconciliation_dashboard;
-
--- 2. All open exceptions, sorted by severity
-SELECT * FROM vw_unresolved_exceptions LIMIT 50;
-
--- 3. Month-over-month reconciliation trend
-SELECT month_key, recon_rate_pct, mom_rate_change_pct
-FROM vw_monthly_recon_trend;
-
--- 4. Top 10 customers by outstanding variance
-SELECT customer_id, total_variance, variance_rank
-FROM vw_top_customers_by_variance
-LIMIT 10;
-
--- 5. Daily cash position
-SELECT txn_date, company_ledger_total, bank_statement_total,
-       daily_variance, running_variance_balance
-FROM vw_daily_cash_position
-ORDER BY txn_date DESC;
-
--- 6. Exception breakdown by type and date
-SELECT recon_date, result_type, exception_count, total_variance
-FROM vw_exception_summary
-ORDER BY recon_date DESC;
-```
-
----
-
-## 🧪 Running Tests
-
-```sql
--- Run all tests (produces PASS/FAIL per test case)
-SOURCE database/tests.sql;
-
--- Or in MySQL Workbench: File → Open SQL Script → tests.sql → Execute
-```
-
-Expected output: **25+ test rows**, all showing `PASS`.
-
----
-
-## 🧰 Technologies & Concepts
-
-| Category | Details |
-|----------|---------|
-| **Database** | MySQL 8.0 |
-| **Normalization** | 3NF with lookup/reference tables |
-| **Window Functions** | `ROW_NUMBER`, `RANK`, `LAG`, `LEAD`, `FIRST_VALUE`, `SUM OVER` |
-| **CTEs** | Multi-step reconciliation logic |
-| **Stored Procedures** | 6 procedures with error handlers and audit logging |
-| **Views** | 8 analytical views including `CREATE OR REPLACE` |
-| **Indexes** | Composite covering indexes + FULLTEXT + EXPLAIN analysis |
-| **Transactions** | `START TRANSACTION` / `COMMIT` with `EXIT HANDLER` |
-| **Generated Columns** | `GENERATED ALWAYS AS ... STORED` for computed fields |
-| **Upserts** | `INSERT ... ON DUPLICATE KEY UPDATE` |
-| **Data Types** | `DECIMAL(18,2)`, `DATETIME(3)`, `TINYINT(1)`, `ENUM`, `CHAR(3)` |
-| **Character Set** | `utf8mb4` / `utf8mb4_unicode_ci` |
-
----
-
-## 📁 Suitable For
-
-- **Fresher / Junior Data Engineer portfolio** — demonstrates real-world ETL, reconciliation, and reporting patterns
-- **Data Analyst with SQL focus** — advanced query techniques and aggregation
-- **Database Developer** — stored procedures, views, indexes, generated columns
-- **Finance Tech / FinTech domains** — domain-specific problem with industry patterns
-
----
-
-## 📄 License
-
-MIT — free to use, modify, and share with attribution.
-
----
-
-<div align="center">
-<b>Built with ❤️ as a portfolio-grade Data Engineering showcase project.</b>
-</div>
+The Power BI report contains two pages.
+
+### 1. Reconciliation Overview
+
+![Reconciliation Overview](./Screenshot%20(114).png)
+
+This page displays:
+
+- Total reconciliation results
+- Matched transactions
+- Total exceptions
+- Match rate
+- Exception breakdown
+- Exception priority distribution
+- Financial summary
+
+### 2. Data Quality and Audit
+
+![Data Quality and Audit](./Screenshot%20(115).png)
+
+This page displays:
+
+- Company, bank, and gateway record counts
+- Total source records
+- Completed reconciliation runs
+- Audit activity
+- Audit log details
+- Exception workflow status
+- Priority breakdown
+
+## Project Files
+
+| File | Description |
+|---|---|
+| `schema.sql` | Creates database tables |
+| `sample_data.sql` | Inserts sample transaction data |
+| `transformations.sql` | Handles data validation and loading |
+| `procedures.sql` | Contains stored procedures |
+| `views.sql` | Contains database views |
+| `indexes.sql` | Creates indexes |
+| `tests.sql` | Contains SQL test scripts |
+| `architecture.md` | Project architecture details |
+| `Financial_Reconciliation_Dashboard.pbix` | Power BI report |
+
+## How to Run the Project
+
+1. Install MySQL Server and MySQL Workbench.
+2. Open the SQL files in MySQL Workbench.
+3. Execute `schema.sql` to create the database and tables.
+4. Execute `sample_data.sql` to insert the sample records.
+5. Execute `transformations.sql` to validate and load the data.
+6. Execute the remaining SQL scripts for procedures, views, indexes, and tests.
+7. Open the Power BI file and connect it to your MySQL database if required.
+
+Run the scripts in a fresh project database. Do not rerun the sample data and transformation scripts on an already populated database unless you have reset it appropriately.
+
+## Note
+
+This is a learning and portfolio project developed using sample data. It is not connected to any live bank or payment gateway system.
+
+## What I Learned
+
+While working on this project, I got practical experience with MySQL database design, data validation, SQL queries, stored procedures, triggers, indexes, transaction reconciliation, and Power BI reporting.
+
+I also learned how transaction differences can be identified and organized for further investigation.
+
+## Author
+
+**Haider Ali**
+
+GitHub: [haiderali0412](https://github.com/haiderali0412)
